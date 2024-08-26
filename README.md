@@ -54,6 +54,7 @@ A documentação das APIs REST está disponível através do Swagger. Você pode
 
 http://localhost:8080/swagger-ui/index.html
 
+Essa documentação fornece detalhes sobre os endpoints disponíveis, os parâmetros necessários e as respostas esperadas.
 
 ## Configuração do Banco de Dados com Docker
 
@@ -92,9 +93,6 @@ Para facilitar a configuração e o acesso ao banco de dados, utilizamos o **Doc
     Com o banco de dados configurado e rodando no Docker, você pode iniciar a aplicação normalmente usando:
    ```bash
       ./gradlew bootRun
-
-Essa documentação fornece detalhes sobre os endpoints disponíveis, os parâmetros necessários e as respostas esperadas.
-
 ## Uso do RestTemplate
 
 A aplicação utiliza o `RestTemplate` para realizar chamadas a serviços REST externos. Por exemplo, durante o processo de aplicação de um cupom de desconto, o `RestTemplate` é usado para chamar o endpoint `/cupom/aplicar` e validar o cupom em um serviço externo.
