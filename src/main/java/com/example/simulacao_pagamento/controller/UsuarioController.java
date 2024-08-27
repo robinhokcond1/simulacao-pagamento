@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -145,13 +147,13 @@ public class UsuarioController {
             @ApiResponse(responseCode = "500", description = "Erro interno ao listar os usuários",
                     content = @Content(mediaType = "application/json"))
     })
-    @GetMapping("/listar")
-    public ResponseEntity<List<Usuario>> listarTodosUsuarios() {
-        try {
-            List<Usuario> usuarios = usuarioService.listarTodosUsuarios();
-            return ResponseEntity.ok(usuarios);
-        } catch (Exception e) {
-            throw new CustomException("Ocorreu um erro ao listar os usuários.", e);
-        }
+    @GetMapping("listar")
+    public ResponseEntity<Page<UsuarioDTO>> listarTodosUsuarios(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<Usuario> usuarios = usuarioService.listarTodosUsuarios(PageRequest.of(page, size));
+        Page<UsuarioDTO> usuarioDTOs = usuarios.map(UsuarioDTO::fromEntity);
+        return ResponseEntity.ok(usuarioDTOs);
     }
+
 }

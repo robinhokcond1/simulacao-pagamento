@@ -1,6 +1,7 @@
 package com.example.simulacao_pagamento.dto;
 
 import com.example.simulacao_pagamento.model.Pagamento;
+import com.example.simulacao_pagamento.model.HistoricoCompra;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -22,7 +23,7 @@ public class PagamentoDTO {
     private double valorPago;
     private double valorDescontado;
     private double percentualDesconto;
-    private List<ItemCarrinhoDTO> itensCarrinho;
+    private List<HistoricoCompraDTO> historicoCompras;
 
     // Getters and Setters
 
@@ -82,16 +83,16 @@ public class PagamentoDTO {
         this.percentualDesconto = percentualDesconto;
     }
 
-    public List<ItemCarrinhoDTO> getItensCarrinho() {
-        return itensCarrinho;
+    public List<HistoricoCompraDTO> getHistoricoCompras() {
+        return historicoCompras;
     }
 
-    public void setItensCarrinho(List<ItemCarrinhoDTO> itensCarrinho) {
-        this.itensCarrinho = itensCarrinho;
+    public void setHistoricoCompras(List<HistoricoCompraDTO> historicoCompras) {
+        this.historicoCompras = historicoCompras;
     }
 
-    // Método para converter uma entidade Pagamento para PagamentoDTO
-    public static PagamentoDTO fromEntity(Pagamento pagamento) {
+    // Método para converter uma entidade Pagamento e uma lista de HistoricoCompra para PagamentoDTO
+    public static PagamentoDTO fromEntity(Pagamento pagamento, List<HistoricoCompra> historicoCompras) {
         PagamentoDTO dto = new PagamentoDTO();
         dto.setNumeroCartao(pagamento.getNumeroCartao());
         dto.setValidadeCartao(pagamento.getValidadeCartao());
@@ -100,6 +101,14 @@ public class PagamentoDTO {
         dto.setValorDescontado(pagamento.getValorDescontado());
         dto.setPercentualDesconto(pagamento.getPercentualDesconto());
         dto.setCupomDesconto(pagamento.getCupomDescontoAplicado());
+
+        // Converter a lista de HistoricoCompra para HistoricoCompraDTO
+        List<HistoricoCompraDTO> historicoCompraDTOs = historicoCompras.stream()
+                .map(HistoricoCompraDTO::fromEntity)
+                .collect(Collectors.toList());
+
+        dto.setHistoricoCompras(historicoCompraDTOs);
+
         return dto;
     }
 }

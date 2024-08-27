@@ -5,6 +5,8 @@ import com.example.simulacao_pagamento.model.Usuario;
 import com.example.simulacao_pagamento.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -66,14 +68,15 @@ public class UsuarioService {
         }
     }
 
-    // Método para listar todos os usuários
-    public List<Usuario> listarTodosUsuarios() {
+    // Método para listar todos os usuários com paginação
+    public Page<Usuario> listarTodosUsuarios(Pageable pageable) {
         try {
-            return usuarioRepository.findAll();
+            return usuarioRepository.findAll(pageable);
         } catch (DataAccessException e) {
             throw new CustomException("Erro ao acessar o banco de dados ao listar os usuários.", e);
         } catch (Exception e) {
             throw new CustomException("Ocorreu um erro inesperado ao listar os usuários.", e);
         }
     }
+
 }

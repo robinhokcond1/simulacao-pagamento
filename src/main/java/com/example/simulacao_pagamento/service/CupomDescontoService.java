@@ -1,14 +1,16 @@
 package com.example.simulacao_pagamento.service;
 
+import com.example.simulacao_pagamento.dto.CupomDescontoCreateDTO;
 import com.example.simulacao_pagamento.exception.CustomException;
 import com.example.simulacao_pagamento.model.CupomDesconto;
 import com.example.simulacao_pagamento.repository.CupomDescontoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class CupomDescontoService {
@@ -22,45 +24,22 @@ public class CupomDescontoService {
     }
 
     // Método para aplicar um cupom de desconto existente
-    public Optional<CupomDesconto> aplicarCupom(String codigo) {
-        if (codigo == null || codigo.trim().isEmpty()) {
-            throw new CustomException("O código do cupom não pode ser nulo ou vazio.");
-        }
+    public String aplicarCupom(String codigo) {
+        validarCodigoCupom(codigo);
 
-        // Busca o cupom pelo código
-        Optional<CupomDesconto> cupomOptional = cupomDescontoRepository.findByCodigo(codigo);
-        if (cupomOptional.isEmpty()) {
-            throw new CustomException("Cupom de desconto inválido ou não encontrado.");
-        }
+        CupomDesconto cupomDesconto = cupomDescontoRepository.findByCodigo(codigo)
+                .orElseThrow(() -> new CustomException("Cupom de desconto inválido ou não encontrado."));
 
-        CupomDesconto cupomDesconto = cupomOptional.get();
+        validarCupomAtivo(cupomDesconto);
+        incrementarUsoCupom(cupomDesconto);
 
-        // Verifica se o cupom está ativo e ainda não atingiu o limite máximo de utilizações
-        if (!cupomDesconto.isAtivo()) {
-            throw new CustomException("Cupom expirado: Este cupom não é mais válido.");
-        }
-
-        if (cupomDesconto.getNumeroUsos() >= MAX_USO_CUPOM) {
-            throw new CustomException("Este cupom de desconto já atingiu o limite máximo de utilizações e não pode mais ser usado.");
-        }
-
-        try {
-            // Incrementa o número de usos do cupom
-            cupomDesconto.incrementarNumeroUsos();
-
-            // Salva as alterações do cupom
-            cupomDescontoRepository.save(cupomDesconto);
-
-            return Optional.of(cupomDesconto);
-        } catch (DataAccessException e) {
-            throw new CustomException("Erro ao acessar o banco de dados ao buscar o cupom de desconto.", e);
-        }
+        return "Cupom aplicado com sucesso! Desconto de " + cupomDesconto.getPorcentagemDesconto() + "%.";
     }
 
     // Método para listar todos os cupons de desconto
-    public List<CupomDesconto> listarTodosCupons() {
+    public Page<CupomDesconto> listarTodosCupons(Pageable pageable) {
         try {
-            return cupomDescontoRepository.findAll();
+            return cupomDescontoRepository.findAll(pageable);
         } catch (DataAccessException e) {
             throw new CustomException("Erro ao acessar o banco de dados ao listar os cupons de desconto.", e);
         } catch (Exception e) {
@@ -69,30 +48,65 @@ public class CupomDescontoService {
     }
 
     // Método para criar um novo cupom de desconto
-    public CupomDesconto criarCupom(CupomDesconto cupomDesconto) {
+    public void criarCupom(CupomDescontoCreateDTO cupomDescontoDTO) {
+        validarCupomDTO(cupomDescontoDTO);
+
+        CupomDesconto novoCupom = new CupomDesconto();
+        novoCupom.setCodigo(cupomDescontoDTO.getCodigo());
+        novoCupom.setPorcentagemDesconto(cupomDescontoDTO.getPorcentagemDesconto());
+        novoCupom.setNumeroUsos(0);
+        novoCupom.setAtivo(true);
+
         try {
-            // Validação básica para verificar se o código do cupom não é nulo ou vazio
-            if (cupomDesconto.getCodigo() == null || cupomDesconto.getCodigo().trim().isEmpty()) {
-                throw new CustomException("O código do cupom não pode ser nulo ou vazio.");
-            }
-
-            // Validação adicional para verificar se a porcentagem de desconto é válida
-            if (cupomDesconto.getPorcentagemDesconto() <= 0 || cupomDesconto.getPorcentagemDesconto() > 100) {
-                throw new CustomException("A porcentagem de desconto deve ser maior que 0 e menor ou igual a 100.");
-            }
-
-            // Inicializa o número de usos do cupom como 0 e define o cupom como ativo
-            cupomDesconto.setNumeroUsos(0);
-            cupomDesconto.setAtivo(true);
-
-            // Salvando o cupom no banco de dados
-            return cupomDescontoRepository.save(cupomDesconto);
+            cupomDescontoRepository.save(novoCupom);
         } catch (DataAccessException e) {
-            // Captura exceções relacionadas ao acesso ao banco de dados
             throw new CustomException("Erro ao acessar o banco de dados ao criar o cupom de desconto.", e);
-        } catch (Exception e) {
-            // Captura outras exceções não esperadas
-            throw new CustomException("Ocorreu um erro inesperado ao criar o cupom de desconto.", e);
+        }
+    }
+
+    // Método para buscar a porcentagem de desconto de um cupom
+    public double buscarPorcentagemDesconto(String codigo) {
+        return cupomDescontoRepository.findByCodigo(codigo)
+                .map(CupomDesconto::getPorcentagemDesconto)
+                .orElseThrow(() -> new CustomException("Cupom de desconto não encontrado."));
+    }
+
+    // Validação do código do cupom
+    private void validarCodigoCupom(String codigo) {
+        if (codigo == null || codigo.trim().isEmpty()) {
+            throw new CustomException("O código do cupom não pode ser nulo ou vazio.");
+        }
+    }
+
+    // Validação se o cupom está ativo e não atingiu o limite de uso
+    private void validarCupomAtivo(CupomDesconto cupomDesconto) {
+        if (!cupomDesconto.isAtivo()) {
+            throw new CustomException("Cupom expirado: Este cupom não é mais válido.");
+        }
+
+        if (cupomDesconto.getNumeroUsos() >= MAX_USO_CUPOM) {
+            throw new CustomException("Este cupom de desconto já atingiu o limite máximo de utilizações e não pode mais ser usado.");
+        }
+    }
+
+    // Incremento do número de usos do cupom
+    private void incrementarUsoCupom(CupomDesconto cupomDesconto) {
+        try {
+            cupomDesconto.incrementarNumeroUsos();
+            cupomDescontoRepository.save(cupomDesconto);
+        } catch (DataAccessException e) {
+            throw new CustomException("Erro ao acessar o banco de dados ao aplicar o cupom de desconto.", e);
+        }
+    }
+
+    // Validação do DTO de criação de cupom
+    private void validarCupomDTO(CupomDescontoCreateDTO cupomDescontoDTO) {
+        if (cupomDescontoDTO.getCodigo() == null || cupomDescontoDTO.getCodigo().trim().isEmpty()) {
+            throw new CustomException("O código do cupom não pode ser nulo ou vazio.");
+        }
+
+        if (cupomDescontoDTO.getPorcentagemDesconto() <= 0 || cupomDescontoDTO.getPorcentagemDesconto() > 100) {
+            throw new CustomException("A porcentagem de desconto deve ser maior que 0 e menor ou que 100.");
         }
     }
 }
